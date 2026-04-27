@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dojochess
+      POSTGRES_USER: dojochess
+      POSTGRES_PASSWORD: dojochess
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Auto-applied on first boot when the data volume is empty
+      - ./packages/server/src/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dojochess"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://dojochess:dojochess@postgres:5432/dojochess
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build:
+      context: .
+      dockerfile: packages/client/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  pgdata:
