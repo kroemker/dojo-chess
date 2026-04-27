@@ -1,0 +1,31 @@
+{
+  "name": "Dojo Chess",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  "postCreateCommand": "npm install",
+
+  "forwardPorts": [80, 3001, 5173, 5432],
+  "portsAttributes": {
+    "80":   { "label": "App (prod)",   "onAutoForward": "silent" },
+    "3001": { "label": "Server",       "onAutoForward": "silent" },
+    "5173": { "label": "Client (dev)", "onAutoForward": "notify" },
+    "5432": { "label": "Postgres",     "onAutoForward": "silent" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@ RUN npm ci --ignore-scripts
 
 # ── build: compile shared, then Vite build the client ──────────────────────
 FROM deps AS build
+COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 RUN npm run build -w packages/shared
 
