@@ -1,0 +1,23 @@
+{
+  "name": "@dojo-chess/server",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@dojo-chess/shared": "*",
+    "express": "^4.18.3",
+    "ws": "^8.16.0",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/ws": "^8.5.10",
+    "@types/pg": "^8.11.4",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.7.3",
+    "typescript": "^5.4.5"
+  }
+}
