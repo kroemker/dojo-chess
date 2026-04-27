@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "claude/*"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  smoke-test:
+    name: Build & smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start services
+        run: docker compose up -d
+
+      - name: Wait for server to be ready
+        run: |
+          echo "Waiting for server..."
+          timeout 90 sh -c '
+            until curl -sf http://localhost:3001/bots > /dev/null; do
+              echo "  not ready, retrying in 3s..."
+              sleep 3
+            done
+          '
+          echo "Server is up"
+
+      - name: Smoke — GET /bots returns an array
+        run: |
+          RESULT=$(curl -sf http://localhost:3001/bots)
+          echo "$RESULT"
+          echo "$RESULT" | jq -e '. | type == "array"'
+
+      - name: Smoke — POST /bots saves a bot
+        run: |
+          BOT=$(curl -sf -X POST http://localhost:3001/bots \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"smoke-bot","code":"function makeMove(gs){ return null; }"}')
+          echo "$BOT"
+          echo "$BOT" | jq -e '.id | type == "number"'
+          echo "BOT_ID=$(echo "$BOT" | jq -r '.id')" >> "$GITHUB_ENV"
+
+      - name: Smoke — POST /games starts a game
+        run: |
+          GAME=$(curl -sf -X POST http://localhost:3001/games \
+            -H 'Content-Type: application/json' \
+            -d "{\"whiteBotId\":$BOT_ID,\"blackBotId\":$BOT_ID}")
+          echo "$GAME"
+          echo "$GAME" | jq -e '.gameId | type == "string"'
+          echo "GAME_ID=$(echo "$GAME" | jq -r '.gameId')" >> "$GITHUB_ENV"
+
+      - name: Smoke — GET /games/:id returns game state
+        run: |
+          STATE=$(curl -sf "http://localhost:3001/games/$GAME_ID")
+          echo "$STATE"
+          echo "$STATE" | jq -e '.phase == "playing"'
+          echo "$STATE" | jq -e '.board | length == 8'
+
+      - name: Smoke — nginx serves the frontend
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:80)
+          echo "HTTP status: $STATUS"
+          [ "$STATUS" = "200" ]
+
+      - name: Print container logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

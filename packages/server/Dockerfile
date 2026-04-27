@@ -19,14 +19,16 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=build /app/package.json            ./
-COPY --from=build /app/node_modules            ./node_modules
-COPY --from=build /app/packages/shared/dist    ./packages/shared/dist
-COPY --from=build /app/packages/shared/package.json ./packages/shared/
-COPY --from=build /app/packages/server/dist    ./packages/server/dist
-COPY --from=build /app/packages/server/package.json ./packages/server/
-# schema.sql is applied via docker-compose init script, not at runtime
-COPY packages/server/src/schema.sql ./schema.sql
+# Re-run npm ci (prod only) so npm creates workspace symlinks itself —
+# avoids the broken-symlink problem of copying node_modules between stages.
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json  ./packages/shared/
+COPY packages/server/package.json  ./packages/server/
+RUN npm ci --omit=dev --ignore-scripts
+
+# Overlay compiled output; symlink targets now have what they need.
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/server/dist ./packages/server/dist
 
 EXPOSE 3001
 CMD ["node", "packages/server/dist/index.js"]
